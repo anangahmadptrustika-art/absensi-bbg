@@ -4,6 +4,20 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import CameraCapture from '@/components/CameraCapture';
 import { distanceMeters } from '@/lib/geo';
 
+declare global {
+  interface Window {
+    /**
+     * Jembatan ke aplikasi Android (APK). Jika ada, pelacakan selama jam
+     * kerja dikerjakan oleh layanan native (tetap jalan saat layar mati);
+     * web berhenti mengirim ping sendiri.
+     */
+    AbsensiNative?: {
+      startTracking: () => void;
+      stopTracking: () => void;
+    };
+  }
+}
+
 interface LocationInfo {
   id: number;
   name: string;
@@ -99,9 +113,20 @@ export default function EmployeeApp() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, [me?.employee?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Di dalam aplikasi Android: layanan native yang memantau posisi
+  // (jalan terus walau layar mati), dan berhenti saat absen pulang/logout.
+  useEffect(() => {
+    const native = window.AbsensiNative;
+    if (!native) return;
+    if (me?.status === 'BEKERJA') native.startTracking();
+    else native.stopTracking();
+  }, [me?.status]);
+
   // Kirim posisi ke server HANYA selama status BEKERJA (privasi:
   // begitu absen pulang, pengiriman berhenti dan server juga menolak).
+  // Di dalam APK, tugas ini diambil alih layanan native di atas.
   useEffect(() => {
+    if (window.AbsensiNative) return;
     if (me?.status !== 'BEKERJA') return;
     const intervalMs = Math.max(5, me.settings.trackingIntervalS) * 1000;
     let stopped = false;

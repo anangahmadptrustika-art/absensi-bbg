@@ -1,0 +1,55 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'id.web.aplikasicanb.absensi'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'id.web.aplikasicanb.absensi'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+        // Alamat aplikasi web yang dibungkus. Ganti di sini jika domain berubah.
+        buildConfigField 'String', 'BASE_URL', '"https://absensi.aplikasicanb.web.id"'
+    }
+
+    signingConfigs {
+        release {
+            // Keystore untuk distribusi internal (dibagikan langsung/WA, bukan
+            // Play Store). Kalau repo dibuat publik, sebaiknya repo diubah
+            // private atau keystore dipindah ke GitHub Secrets.
+            storeFile file('absensi-release.keystore')
+            storePassword 'absensibbg2026'
+            keyAlias 'absensi'
+            keyPassword 'absensibbg2026'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
+}

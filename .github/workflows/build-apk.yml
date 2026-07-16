@@ -1,0 +1,51 @@
+name: Build APK Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/field-worker-attendance-gps-07pog6
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil kode
+        uses: actions/checkout@v4
+
+      - name: Siapkan JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Siapkan Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build APK release (tertandatangani)
+        working-directory: android
+        run: gradle assembleRelease --no-daemon
+
+      - name: Simpan APK sebagai artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AbsensiBBG-APK
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Terbitkan ke GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk AbsensiBBG.apk
+          TAG="apk-build-${{ github.run_number }}"
+          gh release create "$TAG" AbsensiBBG.apk \
+            --title "Absensi BBG — APK build ${{ github.run_number }}" \
+            --notes "Unduh **AbsensiBBG.apk** di bawah, lalu bagikan lewat WhatsApp ke HP karyawan. Panduan pemasangan: lihat PANDUAN-APK.md."
