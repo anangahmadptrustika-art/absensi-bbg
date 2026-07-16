@@ -64,8 +64,7 @@ class TrackingService : Service() {
 
         executor.execute {
             val me = apiGetJson("/api/employee/me")
-            val status = me?.optString("status") ?: ""
-            if (status != "BEKERJA") {
+            if (me == null || me.optString("status") != "BEKERJA") {
                 stopSelf()
                 return@execute
             }
