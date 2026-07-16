@@ -35,6 +35,6 @@ export async function POST(req: NextRequest) {
   clearFailures(lockKey);
   const token = createSession('admin', admin.id);
   const res = NextResponse.json({ ok: true, admin: { id: admin.id, username: admin.username } });
-  attachSessionCookie(res, token, 'admin');
+  attachSessionCookie(req, res, token, 'admin');
   return res;
 }

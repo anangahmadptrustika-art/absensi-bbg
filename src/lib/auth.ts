@@ -57,26 +57,42 @@ export function destroySession(req: NextRequest) {
   if (token) getDb().prepare('DELETE FROM sessions WHERE token = ?').run(token);
 }
 
-export function attachSessionCookie(res: NextResponse, token: string, kind: 'admin' | 'employee') {
+/**
+ * Apakah request ini datang lewat HTTPS? Di belakang proxy/tunnel
+ * (Cloudflare, Caddy, Nginx) protokol asli pengunjung ada di header
+ * x-forwarded-proto. Flag Secure pada cookie mengikuti ini — kalau
+ * dipaksa Secure saat diakses lewat http:// IP lokal, browser membuang
+ * cookie-nya dan login selalu terpental balik.
+ */
+function isSecureRequest(req: NextRequest): boolean {
+  const forwarded = req.headers.get('x-forwarded-proto');
+  if (forwarded) return forwarded.split(',')[0].trim() === 'https';
+  return req.nextUrl.protocol === 'https:';
+}
+
+export function attachSessionCookie(
+  req: NextRequest,
+  res: NextResponse,
+  token: string,
+  kind: 'admin' | 'employee'
+) {
   const days = kind === 'admin' ? ADMIN_SESSION_DAYS : EMPLOYEE_SESSION_DAYS;
   res.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
     maxAge: days * 86400,
-    // Wajib HTTPS di produksi (kamera & GPS juga menuntut HTTPS) —
-    // tanpa flag ini token sesi bisa bocor lewat request http:// biasa.
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureRequest(req),
   });
 }
 
-export function clearSessionCookie(res: NextResponse) {
+export function clearSessionCookie(req: NextRequest, res: NextResponse) {
   res.cookies.set(COOKIE_NAME, '', {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
     maxAge: 0,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureRequest(req),
   });
 }
 

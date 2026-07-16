@@ -6,6 +6,6 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   destroySession(req);
   const res = NextResponse.json({ ok: true });
-  clearSessionCookie(res);
+  clearSessionCookie(req, res);
   return res;
 }
