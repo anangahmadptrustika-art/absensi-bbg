@@ -32,9 +32,13 @@ export default function LocationsTab() {
   const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/admin/locations');
-    const data = await res.json().catch(() => null);
-    if (data?.ok) setRows(data.locations);
+    try {
+      const res = await fetch('/api/admin/locations');
+      const data = await res.json().catch(() => null);
+      if (data?.ok) setRows(data.locations);
+    } catch {
+      setMsg('Gagal memuat daftar lokasi. Periksa koneksi lalu muat ulang halaman.');
+    }
   }, []);
 
   useEffect(() => {
@@ -61,6 +65,8 @@ export default function LocationsTab() {
       } else {
         setMsg(data?.error ?? 'Gagal menyimpan.');
       }
+    } catch {
+      setMsg('Tidak ada koneksi. Periksa jaringan lalu coba lagi.');
     } finally {
       setBusy(false);
     }
@@ -73,7 +79,11 @@ export default function LocationsTab() {
       )
     )
       return;
-    await fetch(`/api/admin/locations/${row.id}`, { method: 'DELETE' });
+    try {
+      await fetch(`/api/admin/locations/${row.id}`, { method: 'DELETE' });
+    } catch {
+      setMsg('Tidak ada koneksi. Lokasi belum terhapus — coba lagi.');
+    }
     await load();
   }
 
@@ -98,6 +108,10 @@ export default function LocationsTab() {
           + Tambah Lokasi
         </button>
       </div>
+
+      {msg && !form && (
+        <p className="rounded-lg bg-red-50 p-3 font-semibold text-red-600">{msg}</p>
+      )}
 
       <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
         <table className="w-full text-left text-sm">

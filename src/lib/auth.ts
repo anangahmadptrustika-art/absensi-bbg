@@ -64,11 +64,20 @@ export function attachSessionCookie(res: NextResponse, token: string, kind: 'adm
     sameSite: 'lax',
     path: '/',
     maxAge: days * 86400,
+    // Wajib HTTPS di produksi (kamera & GPS juga menuntut HTTPS) —
+    // tanpa flag ini token sesi bisa bocor lewat request http:// biasa.
+    secure: process.env.NODE_ENV === 'production',
   });
 }
 
 export function clearSessionCookie(res: NextResponse) {
-  res.cookies.set(COOKIE_NAME, '', { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 0 });
+  res.cookies.set(COOKIE_NAME, '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+    secure: process.env.NODE_ENV === 'production',
+  });
 }
 
 export function unauthorized(message = 'Sesi berakhir. Silakan masuk kembali.') {

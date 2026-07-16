@@ -47,6 +47,7 @@ export default function EmployeeApp() {
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [camera, setCamera] = useState<'in' | 'out' | null>(null);
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [result, setResult] = useState<ResultScreen>(null);
 
   const loadMe = useCallback(async () => {
@@ -114,6 +115,12 @@ export default function EmployeeApp() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(p),
         });
+        if (res.status === 401) {
+          // sesi berakhir / akun dinonaktifkan — berhenti mengirim posisi
+          stopped = true;
+          loadMe();
+          return;
+        }
         const data = await res.json().catch(() => null);
         if (data && data.tracking === false) {
           stopped = true;
@@ -136,6 +143,7 @@ export default function EmployeeApp() {
     const p = posRef.current;
     if (!p) return;
     setSending(true);
+    setSendError(null);
     try {
       const res = await fetch(kind === 'in' ? '/api/employee/checkin' : '/api/employee/checkout', {
         method: 'POST',
@@ -169,12 +177,9 @@ export default function EmployeeApp() {
         });
       }
     } catch {
-      setCamera(null);
-      setResult({
-        kind: 'error',
-        title: 'Tidak ada koneksi internet',
-        message: 'Periksa jaringan HP Anda, lalu tekan tombol absen sekali lagi.',
-      });
+      // jaringan putus: JANGAN tutup kamera — foto dipertahankan
+      // supaya cukup menekan KIRIM ULANG, tanpa mengulang dari awal.
+      setSendError('Tidak ada koneksi internet. Periksa jaringan HP Anda, lalu tekan KIRIM ULANG.');
     } finally {
       setSending(false);
     }
@@ -187,10 +192,11 @@ export default function EmployeeApp() {
         title: 'Lokasi belum ditemukan',
         message:
           gpsError ??
-          'Tunggu beberapa detik sampai tanda lokasi berwarna hijau, lalu tekan tombol lagi.',
+          'Tunggu beberapa detik sampai muncul tanda centang "Siap untuk absen", lalu tekan tombol lagi.',
       });
       return;
     }
+    setSendError(null);
     setCamera(kind);
   }
 
@@ -218,7 +224,10 @@ export default function EmployeeApp() {
           <p className="text-base text-gray-500">Selamat datang,</p>
           <h1 className="text-2xl font-extrabold leading-tight">{me.employee.name}</h1>
         </div>
-        <button onClick={logout} className="rounded-lg px-3 py-2 text-base font-semibold text-gray-400">
+        <button
+          onClick={logout}
+          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-base font-semibold text-gray-600"
+        >
           Keluar
         </button>
       </header>
@@ -231,7 +240,7 @@ export default function EmployeeApp() {
         {me.status === 'BELUM_MASUK' && (
           <>
             <StatusCard color="gray" title="Anda belum absen masuk hari ini">
-              Tekan tombol hijau di bawah untuk absen masuk.
+              Tekan tombol besar bertuliskan ABSEN MASUK di bawah.
             </StatusCard>
             <button className="btn-huge mt-5 bg-brand-600" onClick={() => startAbsen('in')}>
               ☀️ ABSEN MASUK
@@ -279,8 +288,12 @@ export default function EmployeeApp() {
           title={camera === 'in' ? 'Selfie Absen Masuk' : 'Selfie Absen Pulang'}
           accentClass={camera === 'in' ? 'bg-brand-600' : 'bg-orange-500'}
           sending={sending}
+          sendError={sendError}
           onConfirm={(photo) => submitAttendance(camera, photo)}
-          onCancel={() => setCamera(null)}
+          onCancel={() => {
+            setSendError(null);
+            setCamera(null);
+          }}
         />
       )}
 

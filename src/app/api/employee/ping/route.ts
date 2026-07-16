@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { requireEmployee, unauthorized } from '@/lib/auth';
-import { todayAttendance } from '@/lib/attendance';
+import { activeAttendance } from '@/lib/attendance';
 import { isValidCoord } from '@/lib/geo';
+import { readJsonLimited, SMALL_BODY_LIMIT } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,18 +19,25 @@ export async function POST(req: NextRequest) {
   const session = requireEmployee(req);
   if (!session) return unauthorized();
 
-  const att = todayAttendance(session.ref_id);
-  if (!att || att.check_out_at) {
+  // Body dibaca dulu, baru status dicek — cek status + INSERT berjalan
+  // sinkron tanpa await di antaranya, jadi absen pulang yang terjadi
+  // bersamaan tidak bisa menyelipkan titik posisi setelah check-out.
+  const body = await readJsonLimited(req, SMALL_BODY_LIMIT);
+  const lat = body?.lat;
+  const lng = body?.lng;
+  const acc = typeof body?.acc === 'number' ? body.acc : null;
+
+  const att = activeAttendance(session.ref_id);
+  if (!att) {
     // 200 dengan tracking:false supaya klien tahu harus berhenti mengirim.
     return NextResponse.json({ ok: true, tracking: false });
   }
 
-  const body = await req.json().catch(() => null);
-  const lat = body?.lat;
-  const lng = body?.lng;
-  const acc = typeof body?.acc === 'number' ? body.acc : null;
   if (!isValidCoord(lat, lng)) {
-    return NextResponse.json({ ok: false, tracking: true, error: 'Koordinat tidak valid.' }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, tracking: true, error: 'Koordinat tidak valid.' },
+      { status: 400 }
+    );
   }
 
   const db = getDb();

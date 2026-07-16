@@ -11,6 +11,8 @@ const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
  */
 export function savePhotoDataUrl(dataUrl: unknown): string | null {
   if (typeof dataUrl !== 'string') return null;
+  // tolak sebelum decode: base64 ±4/3 ukuran asli
+  if (dataUrl.length > (MAX_PHOTO_BYTES * 4) / 3 + 64) return null;
   const match = /^data:image\/(jpeg|jpg|png);base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
   if (!match) return null;
   const buf = Buffer.from(match[2], 'base64');

@@ -15,13 +15,20 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get('to') ?? '';
   const employeeId = Number(searchParams.get('employee_id') || 0);
 
+  if ((from && !DATE_RE.test(from)) || (to && !DATE_RE.test(to))) {
+    return NextResponse.json(
+      { ok: false, error: 'Format tanggal tidak valid (YYYY-MM-DD).' },
+      { status: 400 }
+    );
+  }
+
   const conds: string[] = [];
   const params: (string | number)[] = [];
-  if (DATE_RE.test(from)) {
+  if (from) {
     conds.push('a.date >= ?');
     params.push(from);
   }
-  if (DATE_RE.test(to)) {
+  if (to) {
     conds.push('a.date <= ?');
     params.push(to);
   }

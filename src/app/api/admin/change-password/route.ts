@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     .prepare('SELECT id, password_hash FROM admins WHERE id = ?')
     .get(session.ref_id) as { id: number; password_hash: string } | undefined;
 
-  if (!admin || !verifySecret(oldPassword, admin.password_hash)) {
+  if (!admin || !(await verifySecret(oldPassword, admin.password_hash))) {
     return NextResponse.json({ ok: false, error: 'Password lama salah.' }, { status: 403 });
   }
 

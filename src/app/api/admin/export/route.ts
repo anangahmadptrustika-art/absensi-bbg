@@ -16,13 +16,20 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get('to') ?? '';
   const employeeId = Number(searchParams.get('employee_id') || 0);
 
+  if ((from && !DATE_RE.test(from)) || (to && !DATE_RE.test(to))) {
+    return NextResponse.json(
+      { ok: false, error: 'Format tanggal tidak valid (YYYY-MM-DD).' },
+      { status: 400 }
+    );
+  }
+
   const conds: string[] = [];
   const params: (string | number)[] = [];
-  if (DATE_RE.test(from)) {
+  if (from) {
     conds.push('a.date >= ?');
     params.push(from);
   }
-  if (DATE_RE.test(to)) {
+  if (to) {
     conds.push('a.date <= ?');
     params.push(to);
   }
@@ -47,7 +54,9 @@ export async function GET(req: NextRequest) {
 
   const tz = getSetting('timezone');
   const esc = (v: unknown) => {
-    const s = v == null ? '' : String(v);
+    let s = v == null ? '' : String(v);
+    // cegah injeksi formula Excel (nama diawali =, +, -, @)
+    if (/^[=+\-@]/.test(s)) s = `'${s}`;
     return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
 

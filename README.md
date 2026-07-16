@@ -32,9 +32,13 @@ npm start
 
 Halaman karyawan: `http://localhost:3000` · Dashboard admin: `http://localhost:3000/admin`
 
-**Akun awal (segera ganti):**
-- Admin: `admin` / `admin123` (ganti lewat menu Pengaturan; atau set env `ADMIN_INITIAL_PASSWORD` sebelum pertama kali jalan)
-- Karyawan contoh: NIK `1001` / PIN `123456`
+**Akun awal:**
+- Admin: username `admin` — password dibuat **acak** saat pertama kali dijalankan dan
+  dicetak sekali di log server (catat, lalu ganti lewat menu Pengaturan). Untuk menentukan
+  sendiri, set env `ADMIN_INITIAL_PASSWORD` sebelum pertama kali jalan.
+- Karyawan contoh: NIK `1001` / PIN `123456` (hapus lewat menu Karyawan saat mulai dipakai sungguhan)
+
+Percobaan login yang salah 5× berturut-turut mengunci akun 15 menit (perlindungan tebak-PIN).
 
 Database SQLite dan foto selfie tersimpan di folder `./data` (otomatis dibuat; bisa dipindah lewat env `DATA_DIR`). Backup cukup dengan menyalin folder ini.
 

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, getSetting } from '@/lib/db';
 import { requireAdmin, unauthorized } from '@/lib/auth';
-import { todayKey } from '@/lib/attendance';
 import { timeHMInTz } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Posisi terakhir karyawan yang SEDANG BEKERJA saja
- * (sudah absen masuk hari ini dan belum absen pulang).
+ * (sudah absen masuk dan belum absen pulang — termasuk shift lewat tengah malam).
  * Karyawan yang sudah absen pulang tidak pernah muncul di sini — privasi.
  */
 export async function GET(req: NextRequest) {
@@ -29,10 +28,10 @@ export async function GET(req: NextRequest) {
          SELECT id FROM track_points WHERE attendance_id = a.id
          ORDER BY recorded_at DESC LIMIT 1
        )
-       WHERE a.date = ? AND a.check_out_at IS NULL
+       WHERE a.check_out_at IS NULL
        ORDER BY e.name COLLATE NOCASE`
     )
-    .all(todayKey()) as {
+    .all() as {
     attendance_id: number;
     check_in_at: string;
     check_in_status: string;

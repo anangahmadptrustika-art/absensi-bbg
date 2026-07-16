@@ -29,6 +29,14 @@ interface LocationRow {
 const POLL_MS = 5000;
 const STALE_AFTER_S = 120; // > 2 menit tanpa kabar → penanda abu-abu
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function initials(name: string): string {
   const parts = name
     .split(/\s+/)
@@ -53,6 +61,9 @@ export default function LiveMapTab() {
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Map<number, Marker>>(new Map());
   const fittedRef = useRef(false);
+  // respons poll lama tidak boleh menimpa yang lebih baru (bisa memunculkan
+  // kembali penanda karyawan yang sudah absen pulang)
+  const pollSeqRef = useRef(0);
   const [working, setWorking] = useState<WorkingEmployee[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,10 +117,12 @@ export default function LiveMapTab() {
   }, []);
 
   const refresh = useCallback(async () => {
+    const seq = ++pollSeqRef.current;
     try {
       const res = await fetch('/api/admin/live');
       if (!res.ok) throw new Error();
       const data = await res.json();
+      if (seq !== pollSeqRef.current) return; // sudah ada poll yang lebih baru
       setWorking(data.working);
       setError(null);
 
@@ -128,7 +141,7 @@ export default function LiveMapTab() {
           iconSize: [38, 38],
           iconAnchor: [19, 19],
         });
-        const popup = `<strong>${w.name}</strong><br/>Masuk ${w.checkInTime} (${w.checkInStatus})<br/>Sinyal: ${agoLabel(w.lastSeenAgoS)}`;
+        const popup = `<strong>${escapeHtml(w.name)}</strong><br/>Masuk ${escapeHtml(w.checkInTime)} (${escapeHtml(w.checkInStatus)})<br/>Sinyal: ${agoLabel(w.lastSeenAgoS)}`;
         const existing = markersRef.current.get(w.employeeId);
         if (existing) {
           existing.setLatLng([w.lat, w.lng]);
@@ -152,7 +165,7 @@ export default function LiveMapTab() {
         map.fitBounds(group.getBounds().pad(0.4), { maxZoom: 16 });
       }
     } catch {
-      setError('Gagal memuat data live. Mencoba lagi…');
+      if (seq === pollSeqRef.current) setError('Gagal memuat data live. Mencoba lagi…');
     }
   }, []);
 

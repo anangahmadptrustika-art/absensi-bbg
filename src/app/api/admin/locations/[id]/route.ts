@@ -15,8 +15,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const body = await req.json().catch(() => null);
   const name = String(body?.name ?? '').trim();
-  const lat = Number(body?.lat);
-  const lng = Number(body?.lng);
+  // jangan pakai Number(): null/'' akan berubah jadi 0 (koordinat 0,0 valid!)
+  const lat = body?.lat;
+  const lng = body?.lng;
   const radius = Math.round(Number(body?.radius_m));
   const active = body?.active === false ? 0 : 1;
 

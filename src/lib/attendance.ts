@@ -27,8 +27,10 @@ export function todayKey(): string {
 
 /**
  * Lokasi absen yang berlaku untuk karyawan:
- * jika karyawan ditugaskan ke satu lokasi, hanya lokasi itu;
- * jika tidak, semua lokasi aktif.
+ * - ditugaskan ke satu lokasi → HANYA lokasi itu (jika lokasinya dinonaktifkan,
+ *   hasilnya kosong — karyawan diarahkan menghubungi admin, bukan diam-diam
+ *   dibolehkan absen di semua lokasi);
+ * - tanpa penugasan → semua lokasi aktif.
  */
 export function allowedLocations(employeeId: number): GeofenceLocation[] {
   const db = getDb();
@@ -36,10 +38,9 @@ export function allowedLocations(employeeId: number): GeofenceLocation[] {
     | { location_id: number | null }
     | undefined;
   if (emp?.location_id) {
-    const rows = db
+    return db
       .prepare('SELECT id, name, lat, lng, radius_m FROM locations WHERE id = ? AND active = 1')
       .all(emp.location_id) as GeofenceLocation[];
-    if (rows.length > 0) return rows;
   }
   return db
     .prepare('SELECT id, name, lat, lng, radius_m FROM locations WHERE active = 1')
@@ -52,11 +53,17 @@ export function todayAttendance(employeeId: number): AttendanceRow | undefined {
     .get(employeeId, todayKey()) as AttendanceRow | undefined;
 }
 
-export type WorkStatus = 'BELUM_MASUK' | 'BEKERJA' | 'SELESAI';
-
-export function workStatus(att: AttendanceRow | undefined): WorkStatus {
-  if (!att) return 'BELUM_MASUK';
-  return att.check_out_at ? 'SELESAI' : 'BEKERJA';
+/**
+ * Shift yang masih berjalan (sudah absen masuk, belum absen pulang),
+ * TANPA terikat tanggal hari ini — supaya kerja lewat tengah malam
+ * (atau perubahan zona waktu di tengah shift) tetap bisa absen pulang.
+ */
+export function activeAttendance(employeeId: number): AttendanceRow | undefined {
+  return getDb()
+    .prepare(
+      'SELECT * FROM attendance WHERE employee_id = ? AND check_out_at IS NULL ORDER BY check_in_at DESC LIMIT 1'
+    )
+    .get(employeeId) as AttendanceRow | undefined;
 }
 
 /** Status ketepatan waktu untuk absen masuk sekarang: TEPAT atau TERLAMBAT. */

@@ -37,14 +37,18 @@ export default function EmployeesTab() {
   const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [empRes, locRes] = await Promise.all([
-      fetch('/api/admin/employees'),
-      fetch('/api/admin/locations'),
-    ]);
-    const emp = await empRes.json().catch(() => null);
-    const loc = await locRes.json().catch(() => null);
-    if (emp?.ok) setRows(emp.employees);
-    if (loc?.ok) setLocations(loc.locations);
+    try {
+      const [empRes, locRes] = await Promise.all([
+        fetch('/api/admin/employees'),
+        fetch('/api/admin/locations'),
+      ]);
+      const emp = await empRes.json().catch(() => null);
+      const loc = await locRes.json().catch(() => null);
+      if (emp?.ok) setRows(emp.employees);
+      if (loc?.ok) setLocations(loc.locations);
+    } catch {
+      setMsg('Gagal memuat data. Periksa koneksi lalu muat ulang halaman.');
+    }
   }, []);
 
   useEffect(() => {
@@ -71,6 +75,8 @@ export default function EmployeesTab() {
       } else {
         setMsg(data?.error ?? 'Gagal menyimpan.');
       }
+    } catch {
+      setMsg('Tidak ada koneksi. Periksa jaringan lalu coba lagi.');
     } finally {
       setBusy(false);
     }
@@ -83,7 +89,11 @@ export default function EmployeesTab() {
       )
     )
       return;
-    await fetch(`/api/admin/employees/${row.id}`, { method: 'DELETE' });
+    try {
+      await fetch(`/api/admin/employees/${row.id}`, { method: 'DELETE' });
+    } catch {
+      setMsg('Tidak ada koneksi. Karyawan belum terhapus — coba lagi.');
+    }
     await load();
   }
 
@@ -107,6 +117,10 @@ export default function EmployeesTab() {
           + Tambah Karyawan
         </button>
       </div>
+
+      {msg && !form && (
+        <p className="rounded-lg bg-red-50 p-3 font-semibold text-red-600">{msg}</p>
+      )}
 
       <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
         <table className="w-full text-left text-sm">

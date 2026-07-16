@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
-import { hashSecret } from './hash';
+import { hashSecret, randomPassword } from './hash';
 
 /**
  * Semua data disimpan di direktori DATA_DIR (default: ./data).
@@ -95,13 +95,33 @@ function createSchema(d: Database.Database) {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS login_attempts (
+      key TEXT PRIMARY KEY,
+      fail_count INTEGER NOT NULL DEFAULT 0,
+      last_fail_at TEXT NOT NULL,
+      locked_until TEXT
+    );
   `);
 }
 
 function seed(d: Database.Database) {
   const hasAdmin = d.prepare('SELECT COUNT(*) AS n FROM admins').get() as { n: number };
   if (hasAdmin.n === 0) {
-    const pw = process.env.ADMIN_INITIAL_PASSWORD || 'admin123';
+    // Tidak ada password bawaan yang bisa ditebak publik: jika env tidak diset,
+    // buat password acak dan tampilkan SEKALI di log server saat pertama jalan.
+    let pw = process.env.ADMIN_INITIAL_PASSWORD;
+    if (!pw) {
+      pw = randomPassword();
+      console.log('');
+      console.log('='.repeat(64));
+      console.log('  AKUN ADMIN DIBUAT — username: admin');
+      console.log(`  Password awal: ${pw}`);
+      console.log('  Catat sekarang, lalu ganti lewat menu Pengaturan.');
+      console.log('  (Atau set env ADMIN_INITIAL_PASSWORD sebelum pertama jalan.)');
+      console.log('='.repeat(64));
+      console.log('');
+    }
     d.prepare('INSERT INTO admins (username, password_hash) VALUES (?, ?)').run(
       'admin',
       hashSecret(pw)

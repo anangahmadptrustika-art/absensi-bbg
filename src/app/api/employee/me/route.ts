@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, getSetting } from '@/lib/db';
 import { requireEmployee, unauthorized } from '@/lib/auth';
-import { allowedLocations, todayAttendance, workStatus } from '@/lib/attendance';
+import { activeAttendance, allowedLocations, todayAttendance } from '@/lib/attendance';
 import { timeHMInTz } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
@@ -15,13 +15,17 @@ export async function GET(req: NextRequest) {
     .get(session.ref_id) as { id: number; name: string; nik: string; active: number } | undefined;
   if (!emp || !emp.active) return unauthorized('Akun tidak aktif. Hubungi admin.');
 
-  const att = todayAttendance(emp.id);
+  // Shift berjalan tidak terikat tanggal (bisa lewat tengah malam);
+  // status SELESAI hanya dilihat dari absensi hari ini yang sudah ditutup.
+  const open = activeAttendance(emp.id);
+  const att = open ?? todayAttendance(emp.id);
+  const status = open ? 'BEKERJA' : att?.check_out_at ? 'SELESAI' : 'BELUM_MASUK';
   const tz = getSetting('timezone');
 
   return NextResponse.json({
     ok: true,
     employee: { id: emp.id, name: emp.name, nik: emp.nik },
-    status: workStatus(att),
+    status,
     today: att
       ? {
           checkInAt: att.check_in_at,

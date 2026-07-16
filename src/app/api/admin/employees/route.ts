@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db';
 import { requireAdmin, unauthorized } from '@/lib/auth';
 import { hashSecret } from '@/lib/hash';
 import { todayKey } from '@/lib/attendance';
+import { locationExists, parseLocationId } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
   const name = String(body?.name ?? '').trim();
   const nik = String(body?.nik ?? '').trim();
   const pin = String(body?.pin ?? '').trim();
-  const locationId = body?.location_id ? Number(body.location_id) : null;
+  const locationId = parseLocationId(body?.location_id);
   const active = body?.active === false ? 0 : 1;
 
   if (!name || !nik) {
@@ -35,6 +36,9 @@ export async function POST(req: NextRequest) {
   }
   if (!/^\d{4,8}$/.test(pin)) {
     return NextResponse.json({ ok: false, error: 'PIN harus 4-8 digit angka.' }, { status: 400 });
+  }
+  if (locationId === undefined || !locationExists(locationId)) {
+    return NextResponse.json({ ok: false, error: 'Lokasi tugas tidak ditemukan.' }, { status: 400 });
   }
 
   try {

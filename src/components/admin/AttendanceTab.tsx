@@ -25,8 +25,11 @@ interface EmployeeOption {
 }
 
 function isoDateDaysAgo(days: number): string {
+  // pakai tanggal LOKAL, bukan toISOString() (UTC) — kalau tidak, tiap pagi
+  // sebelum jam 07.00 WIB data "hari ini" tidak masuk rentang default
   const d = new Date(Date.now() - days * 86400_000);
-  return d.toISOString().slice(0, 10);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 export default function AttendanceTab() {
@@ -38,6 +41,9 @@ export default function AttendanceTab() {
   const [loading, setLoading] = useState(false);
   const [photoModal, setPhotoModal] = useState<{ src: string; caption: string } | null>(null);
   const [trackModal, setTrackModal] = useState<AttendanceRecord | null>(null);
+  // nomor urut request: respons lama yang datang terlambat tidak boleh
+  // menimpa hasil filter yang lebih baru
+  const loadSeqRef = useRef(0);
 
   useEffect(() => {
     fetch('/api/admin/employees')
@@ -47,15 +53,18 @@ export default function AttendanceTab() {
   }, []);
 
   const load = useCallback(async () => {
+    const seq = ++loadSeqRef.current;
     setLoading(true);
     try {
       const params = new URLSearchParams({ from, to });
       if (employeeId) params.set('employee_id', String(employeeId));
       const res = await fetch(`/api/admin/attendance?${params}`);
       const data = await res.json().catch(() => null);
-      if (data?.ok) setRecords(data.records);
+      if (seq === loadSeqRef.current && data?.ok) setRecords(data.records);
+    } catch {
+      // jaringan gagal — biarkan data lama tampil
     } finally {
-      setLoading(false);
+      if (seq === loadSeqRef.current) setLoading(false);
     }
   }, [from, to, employeeId]);
 
@@ -257,10 +266,16 @@ function TrackModal({ record, onClose }: { record: AttendanceRecord; onClose: ()
       }).addTo(map);
       mapRef.current = map;
 
-      const res = await fetch(`/api/admin/attendance/${record.id}/track`);
-      const data = await res.json().catch(() => null);
-      if (cancelled || !data?.ok) {
-        setInfo('Gagal memuat rute.');
+      let data: { ok?: boolean; points?: unknown } | null = null;
+      try {
+        const res = await fetch(`/api/admin/attendance/${record.id}/track`);
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+      if (cancelled) return;
+      if (!data?.ok) {
+        setInfo('Gagal memuat rute. Tutup lalu coba lagi.');
         return;
       }
       const pts = (data.points as { lat: number; lng: number }[]).map(
