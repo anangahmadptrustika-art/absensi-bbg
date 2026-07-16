@@ -1,0 +1,30 @@
+services:
+  absensi:
+    build: .
+    container_name: absensi-bbg
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      # seluruh data (database + foto selfie) tersimpan di folder ./data
+      # di samping file ini — backup cukup menyalin folder tersebut
+      - ./data:/app/data
+    environment:
+      # Opsional: password admin awal. Jika dikosongkan, password acak
+      # dibuat saat pertama jalan dan dicetak di log:
+      #   docker compose logs absensi
+      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-}
+
+  # Cloudflare Tunnel: membuat aplikasi bisa diakses dari internet dengan
+  # HTTPS otomatis, tanpa IP publik dan tanpa buka port router.
+  # Isi TUNNEL_TOKEN di file .env (lihat DEPLOY-CASAOS.md), lalu jalankan:
+  #   docker compose up -d
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: absensi-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:-}
+    depends_on:
+      - absensi

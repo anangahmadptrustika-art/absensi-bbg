@@ -42,6 +42,19 @@ Percobaan login yang salah 5× berturut-turut mengunci akun 15 menit (perlindung
 
 Database SQLite dan foto selfie tersimpan di folder `./data` (otomatis dibuat; bisa dipindah lewat env `DATA_DIR`). Backup cukup dengan menyalin folder ini.
 
+## Deploy
+
+Dua panduan langkah demi langkah tersedia:
+
+- **[DEPLOY-CASAOS.md](DEPLOY-CASAOS.md)** — server sendiri (CasaOS/Proxmox/Docker) + Cloudflare Tunnel: tanpa IP publik, tanpa buka port, gratis, HTTPS otomatis.
+- **[DEPLOY.md](DEPLOY.md)** — VPS (Ubuntu + pm2 + Caddy).
+
+Jalur Docker juga bisa dipakai di mana saja:
+
+```bash
+docker compose up -d --build
+```
+
 ## PENTING: wajib HTTPS saat dipakai di lapangan
 
 Browser HP hanya mengizinkan **kamera dan GPS** pada halaman **HTTPS** (atau `localhost` saat pengembangan).
