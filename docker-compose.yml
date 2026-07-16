@@ -4,7 +4,11 @@ services:
     container_name: absensi-bbg
     restart: unless-stopped
     ports:
-      - '3000:3000'
+      # Port akses dari jaringan lokal (http://IP-server:PORT). Ganti lewat
+      # APP_PORT di .env jika 3000 sudah dipakai aplikasi lain. Cloudflare
+      # Tunnel TIDAK memakai port ini (ia terhubung lewat jaringan internal
+      # Docker langsung ke absensi:3000).
+      - '${APP_PORT:-3000}:3000'
     volumes:
       # seluruh data (database + foto selfie) tersimpan di folder ./data
       # di samping file ini — backup cukup menyalin folder tersebut
